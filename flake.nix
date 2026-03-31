@@ -92,13 +92,25 @@
             type = types.lazyAttrsOf (
               types.submodule (
                 { name, ... }:
+                let
+                  darwinModules = repoModuleOption name "darwin";
+                  flakeModules = repoModuleOption name "flake";
+                  homeModules = repoModuleOption name "homeManager";
+                  nixosModules = repoModuleOption name "nixos";
+                in
                 {
                   options = {
+                    inherit
+                      darwinModules
+                      flakeModules
+                      homeModules
+                      nixosModules
+                      ;
                     modules = {
-                      nixos = repoModuleOption name "nixos";
-                      homeManager = repoModuleOption name "homeManager";
-                      darwin = repoModuleOption name "darwin";
-                      flake = repoModuleOption name "flake";
+                      darwin = darwinModules;
+                      flake = flakeModules;
+                      homeManager = homeModules;
+                      nixos = nixosModules;
                     };
                     overlays = mkOption {
                       # uniq -> ordered: https://github.com/NixOS/nixpkgs/issues/147052
@@ -143,15 +155,30 @@
                 nixpkgs.overlays = [ overlay ];
               };
             });
-            repos = lib.mapAttrs (name: r: {
-              modules = {
-                nixos = r.nixosModules or r.modules or { };
-                homeManager = r.homeModules or { };
-                darwin = r.darwinModules or { };
-                flake = r.flakeModules or { };
-              };
-              overlays = r.overlays or { };
-            }) repos;
+            repos = mapAttrs (
+              name: r:
+              let
+                darwinModules = r.darwinModules or { };
+                flakeModules = r.flakeModules or { };
+                homeModules = r.homeModules or { };
+                nixosModules = r.nixosModules or r.modules or { };
+              in
+              {
+                inherit
+                  darwinModules
+                  flakeModules
+                  homeModules
+                  nixosModules
+                  ;
+                modules = {
+                  darwin = darwinModules;
+                  flake = flakeModules;
+                  homeManager = homeModules;
+                  nixos = nixosModules;
+                };
+                overlays = r.overlays or { };
+              }
+            ) repos;
           };
           perSystem =
             { pkgs, ... }:
